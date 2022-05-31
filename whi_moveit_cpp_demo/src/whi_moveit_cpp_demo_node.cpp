@@ -53,7 +53,7 @@ int main(int argc, char** argv)
 
     /// setup
     //
-    /* Otherwise robot with zeros joint_states */
+    // otherwise robot with zeros joint_states
     ros::Duration(1.0).sleep();
 
     namespace moveit_cpp = moveit::planning_interface;
@@ -70,7 +70,7 @@ int main(int argc, char** argv)
     // MoveItVisualTools provides many capabilities for visualizing objects, robots,
     // and trajectories in RViz as well as debugging tools such as step-by-step introspection of a script
     namespace rvt = rviz_visual_tools;
-    moveit_visual_tools::MoveItVisualTools visualTools("panda_link0", rvt::RVIZ_MARKER_TOPIC,
+    moveit_visual_tools::MoveItVisualTools visualTools(paramVisualLink, rvt::RVIZ_MARKER_TOPIC,
         moveitCppPtr->getPlanningSceneMonitor());
     visualTools.deleteAllMarkers();
     visualTools.loadRemoteControl();
