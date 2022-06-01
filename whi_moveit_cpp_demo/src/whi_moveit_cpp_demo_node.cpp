@@ -21,15 +21,16 @@ Changelog:
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/Pose.h>
 #include <Eigen/src/Geometry/Transform.h>
+#include <eigen_conversions/eigen_msg.h>
 
 int main(int argc, char** argv)
 {
     /// node version and copyright announcement
-    std::cout << "\nWHI MoveIt MoveItCpp demo VERSION 00.01" << std::endl;
+    std::cout << "\nWHI MoveIt MoveItCpp demo VERSION 00.02" << std::endl;
     std::cout << "Copyright © 2022-2023 Wheel Hub Intelligent Co.,Ltd. All rights reserved\n" << std::endl;
 
     ros::init(argc, argv, "moveit_cpp_demo");
-    ros::NodeHandle nodeHandle("/moveit_cpp_tutorial");
+    ros::NodeHandle nodeHandle;
 
     // ROS spinning must be running for the MoveGroupInterface to get information
     // about the robot's state. One way to do this is to start an AsyncSpinner beforehand
@@ -39,6 +40,8 @@ int main(int argc, char** argv)
     /// get config params
     std::string paramPlanningGroup;
     nodeHandle.param("/moveit_cpp_demo/planning_group", paramPlanningGroup, std::string("whi_arm"));
+    std::string paramVisualFrame;
+    nodeHandle.param("/moveit_cpp_demo/visual_frame", paramVisualFrame, std::string("whi_link7"));
     std::string paramVisualLink;
     nodeHandle.param("/moveit_cpp_demo/visual_link", paramVisualLink, std::string("whi_link0"));
     double paramTitleHeight = 0.0;
@@ -50,6 +53,15 @@ int main(int argc, char** argv)
     nodeHandle.param("/moveit_cpp_demo/plan01/goal_frame", paramGoalFrame, std::string("whi_link0"));
     std::string paramGoalLink;
     nodeHandle.param("/moveit_cpp_demo/plan01/goal_link", paramGoalLink, std::string("whi_link7"));
+    // plan02
+    std::vector<double> paramStartPose02;
+    nodeHandle.getParam("/moveit_cpp_demo/plan02/start_pose", paramStartPose02);
+    // plan03
+    std::vector<double> paramGoal03;
+    nodeHandle.getParam("/moveit_cpp_demo/plan03/goal_pose", paramGoal03);
+    // plan04
+    std::string paramStateGroup;
+    nodeHandle.param("/moveit_cpp_demo/plan04/state_group", paramStateGroup, std::string("ready"));
 
     /// setup
     //
@@ -65,12 +77,16 @@ int main(int argc, char** argv)
     auto robotStartState = planningComponents->getStartState();
     auto jointModelGroupPtr = robotModelPtr->getJointModelGroup(paramPlanningGroup);
 
+    geometry_msgs::Pose robotStartPose;//= tf2::toMsg(robotStartState->getGlobalLinkTransform(paramVisualLink)); // failed to compile why?
+    tf::poseEigenToMsg(robotStartState->getGlobalLinkTransform(paramVisualLink), robotStartPose);
+    int dof = jointModelGroupPtr->getVariableNames().size();
+
     // visualization
     //
     // MoveItVisualTools provides many capabilities for visualizing objects, robots,
     // and trajectories in RViz as well as debugging tools such as step-by-step introspection of a script
     namespace rvt = rviz_visual_tools;
-    moveit_visual_tools::MoveItVisualTools visualTools(paramVisualLink, rvt::RVIZ_MARKER_TOPIC,
+    moveit_visual_tools::MoveItVisualTools visualTools(paramVisualFrame, rvt::RVIZ_MARKER_TOPIC,
         moveitCppPtr->getPlanningSceneMonitor());
     visualTools.deleteAllMarkers();
     visualTools.loadRemoteControl();
@@ -97,20 +113,29 @@ int main(int argc, char** argv)
     // the first way to set the goal of the plan is by using geometry_msgs::PoseStamped ROS message type as follow
     geometry_msgs::PoseStamped goal01;
     goal01.header.frame_id = paramGoalFrame;
-    goal01.pose.orientation.w = 1.0;
+    if (dof > 6)
+    {
+        // DOF 7
+        goal01.pose.orientation.w = 1.0;
+    }
+    else
+    {
+        // DOF 6
+        goal01.pose.orientation = robotStartPose.orientation;
+    }
     goal01.pose.position.x = paramGoal01[0];
     goal01.pose.position.y = paramGoal01[1];
     goal01.pose.position.z = paramGoal01[2];
     planningComponents->setGoal(goal01, paramGoalLink);
 
-    // then call the PlanningComponents to compute the plan and visualize it
+    // call the PlanningComponents to compute the plan and visualize it
     // note that it is just planning
     auto planSolution01 = planningComponents->plan();
     // check if PlanningComponents succeeded in finding the plan
     if (planSolution01)
     {
         // visualize the start pose in rviz
-        visualTools.publishAxisLabeled(robotStartState->getGlobalLinkTransform("panda_link8"), "start_pose");
+        visualTools.publishAxisLabeled(robotStartState->getGlobalLinkTransform(paramVisualLink), "start_pose");
         visualTools.publishText(text_pose, "Start Pose", rvt::WHITE, rvt::XLARGE);
         // visualize the goal pose in rviz
         visualTools.publishAxisLabeled(goal01.pose, "target_pose");
@@ -129,19 +154,29 @@ int main(int argc, char** argv)
 
     /// plan 02
     //
-    // it will set the current state of the plan using moveit::core::RobotState
+    // the current state of the plan can be set by using moveit::core::RobotState
     auto startState = *(moveitCppPtr->getCurrentState());
-    geometry_msgs::Pose start_pose;
-    start_pose.orientation.w = 1.0;
-    start_pose.position.x = 0.55;
-    start_pose.position.y = 0.0;
-    start_pose.position.z = 0.6;
+    geometry_msgs::Pose startPose;
+    startPose.orientation.w = 1.0;
+    if (dof > 6)
+    {
+        // DOF 7
+        startPose.orientation.w = 1.0;
+    }
+    else
+    {
+        // DOF 6
+        startPose.orientation = robotStartPose.orientation;
+    }
+    startPose.position.x = paramStartPose02[0];
+    startPose.position.y = paramStartPose02[1];
+    startPose.position.z = paramStartPose02[2];
 
-    startState.setFromIK(jointModelGroupPtr, start_pose);
+    startState.setFromIK(jointModelGroupPtr, startPose);
 
     planningComponents->setStartState(startState);
 
-    // reuse the old goal that we had and plan to it
+    // reuse the previous goal that we had and plan to it
     auto planSolution02 = planningComponents->plan();
     if (planSolution02)
     {
@@ -149,7 +184,7 @@ int main(int argc, char** argv)
         moveit::core::robotStateMsgToRobotState(planSolution02.start_state, robotState);
 
         visualTools.publishText(text_pose, "Start Pose", rvt::WHITE, rvt::XLARGE);
-        visualTools.publishAxisLabeled(robotState.getGlobalLinkTransform("panda_link8"), "start_pose");
+        visualTools.publishAxisLabeled(robotState.getGlobalLinkTransform(paramVisualLink), "start_pose");
         visualTools.publishText(text_pose, "Goal Pose", rvt::WHITE, rvt::XLARGE);
         visualTools.publishAxisLabeled(goal01.pose, "target_pose");
         visualTools.publishTrajectoryLine(planSolution02.trajectory, jointModelGroupPtr);
@@ -168,16 +203,25 @@ int main(int argc, char** argv)
     // the goal of the plan can be set by using moveit::core::RobotState
     auto targetState = *robotStartState;
     geometry_msgs::Pose goal03;
-    goal03.orientation.w = 1.0;
-    goal03.position.x = 0.55;
-    goal03.position.y = -0.05;
-    goal03.position.z = 0.8;
+    if (dof > 6)
+    {
+        // DOF 7
+        goal03.orientation.w = 1.0;
+    }
+    else
+    {
+        // DOF 6
+        goal03.orientation = robotStartPose.orientation;
+    }
+    goal03.position.x = paramGoal03[0];
+    goal03.position.y = paramGoal03[1];
+    goal03.position.z = paramGoal03[2];
 
     targetState.setFromIK(jointModelGroupPtr, goal03);
 
     planningComponents->setGoal(targetState);
 
-    // reuse the old start that we had and plan from it
+    // reuse the previous start state that we had and plan from it
     auto plan_solution3 = planningComponents->plan();
     if (plan_solution3)
     {
@@ -185,7 +229,7 @@ int main(int argc, char** argv)
         moveit::core::robotStateMsgToRobotState(plan_solution3.start_state, robot_state);
 
         visualTools.publishText(text_pose, "Start Pose", rvt::WHITE, rvt::XLARGE);
-        visualTools.publishAxisLabeled(robot_state.getGlobalLinkTransform("panda_link8"), "start_pose");
+        visualTools.publishAxisLabeled(robot_state.getGlobalLinkTransform(paramVisualLink), "start_pose");
         visualTools.publishText(text_pose, "Goal Pose", rvt::WHITE, rvt::XLARGE);
         visualTools.publishAxisLabeled(goal03, "target_pose");
         visualTools.publishTrajectoryLine(plan_solution3.trajectory, jointModelGroupPtr);
@@ -206,9 +250,9 @@ int main(int argc, char** argv)
     // the planning group called "ready" is the prerequisite
 
     // set the goal state of the plan from a named robot state
-    planningComponents->setGoal("ready");
+    planningComponents->setGoal(paramStateGroup);
 
-    // reuse the old start that we had and plan from it
+    // reuse the previous start state that we had and plan from it
     auto planSolution04 = planningComponents->plan();
     if (planSolution04)
     {
@@ -216,9 +260,9 @@ int main(int argc, char** argv)
         moveit::core::robotStateMsgToRobotState(planSolution04.start_state, robotState);
 
         visualTools.publishText(text_pose, "Start Pose", rvt::WHITE, rvt::XLARGE);
-        visualTools.publishAxisLabeled(robotState.getGlobalLinkTransform("panda_link8"), "start_pose");
+        visualTools.publishAxisLabeled(robotState.getGlobalLinkTransform(paramVisualLink), "start_pose");
         visualTools.publishText(text_pose, "Goal Pose", rvt::WHITE, rvt::XLARGE);
-        visualTools.publishAxisLabeled(robotStartState->getGlobalLinkTransform("panda_link8"), "target_pose");
+        visualTools.publishAxisLabeled(robotStartState->getGlobalLinkTransform(paramVisualLink), "target_pose");
         visualTools.publishTrajectoryLine(planSolution04.trajectory, jointModelGroupPtr);
         visualTools.trigger();
 
