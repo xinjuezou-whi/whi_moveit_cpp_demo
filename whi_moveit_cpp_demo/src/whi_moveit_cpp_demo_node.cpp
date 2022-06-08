@@ -62,6 +62,13 @@ int main(int argc, char** argv)
     // plan04
     std::string paramStateGroup;
     nodeHandle.param("/moveit_cpp_demo/plan04/state_group", paramStateGroup, std::string("ready"));
+    // plan05
+    std::vector<double> paramGoal05;
+    nodeHandle.getParam("/moveit_cpp_demo/plan05/goal_pose", paramGoal05);
+    std::vector<double> paramBoxSize;
+    nodeHandle.getParam("/moveit_cpp_demo/plan05/block_box_size", paramBoxSize);
+    std::vector<double> paramBoxPose;
+    nodeHandle.getParam("/moveit_cpp_demo/plan05/block_box_pose", paramBoxPose);
 
     /// setup
     //
@@ -134,12 +141,11 @@ int main(int argc, char** argv)
     // check if PlanningComponents succeeded in finding the plan
     if (planSolution01)
     {
+        visualTools.publishText(text_pose, "single goal", rvt::WHITE, rvt::XLARGE);
         // visualize the start pose in rviz
         visualTools.publishAxisLabeled(robotStartState->getGlobalLinkTransform(paramVisualLink), "start_pose");
-        visualTools.publishText(text_pose, "Start Pose", rvt::WHITE, rvt::XLARGE);
         // visualize the goal pose in rviz
         visualTools.publishAxisLabeled(goal01.pose, "target_pose");
-        visualTools.publishText(text_pose, "Goal Pose", rvt::WHITE, rvt::XLARGE);
         // visualize the trajectory in rviz
         visualTools.publishTrajectoryLine(planSolution01.trajectory, jointModelGroupPtr);
         visualTools.trigger();
@@ -183,9 +189,8 @@ int main(int argc, char** argv)
         moveit::core::RobotState robotState(robotModelPtr);
         moveit::core::robotStateMsgToRobotState(planSolution02.start_state, robotState);
 
-        visualTools.publishText(text_pose, "Start Pose", rvt::WHITE, rvt::XLARGE);
+        visualTools.publishText(text_pose, "single goal with pre-set start state", rvt::WHITE, rvt::XLARGE);
         visualTools.publishAxisLabeled(robotState.getGlobalLinkTransform(paramVisualLink), "start_pose");
-        visualTools.publishText(text_pose, "Goal Pose", rvt::WHITE, rvt::XLARGE);
         visualTools.publishAxisLabeled(goal01.pose, "target_pose");
         visualTools.publishTrajectoryLine(planSolution02.trajectory, jointModelGroupPtr);
         visualTools.trigger();
@@ -222,17 +227,16 @@ int main(int argc, char** argv)
     planningComponents->setGoal(targetState);
 
     // reuse the previous start state that we had and plan from it
-    auto plan_solution3 = planningComponents->plan();
-    if (plan_solution3)
+    auto planSolution3 = planningComponents->plan();
+    if (planSolution3)
     {
-        moveit::core::RobotState robot_state(robotModelPtr);
-        moveit::core::robotStateMsgToRobotState(plan_solution3.start_state, robot_state);
+        moveit::core::RobotState robotState(robotModelPtr);
+        moveit::core::robotStateMsgToRobotState(planSolution3.start_state, robotState);
 
-        visualTools.publishText(text_pose, "Start Pose", rvt::WHITE, rvt::XLARGE);
-        visualTools.publishAxisLabeled(robot_state.getGlobalLinkTransform(paramVisualLink), "start_pose");
-        visualTools.publishText(text_pose, "Goal Pose", rvt::WHITE, rvt::XLARGE);
+        visualTools.publishText(text_pose, "single goal set by target state", rvt::WHITE, rvt::XLARGE);
+        visualTools.publishAxisLabeled(robotState.getGlobalLinkTransform(paramVisualLink), "start_pose");
         visualTools.publishAxisLabeled(goal03, "target_pose");
-        visualTools.publishTrajectoryLine(plan_solution3.trajectory, jointModelGroupPtr);
+        visualTools.publishTrajectoryLine(planSolution3.trajectory, jointModelGroupPtr);
         visualTools.trigger();
 
         // uncomment if you want to execute the plan
@@ -259,11 +263,109 @@ int main(int argc, char** argv)
         moveit::core::RobotState robotState(robotModelPtr);
         moveit::core::robotStateMsgToRobotState(planSolution04.start_state, robotState);
 
-        visualTools.publishText(text_pose, "Start Pose", rvt::WHITE, rvt::XLARGE);
+        visualTools.publishText(text_pose, "goal from state group", rvt::WHITE, rvt::XLARGE);
         visualTools.publishAxisLabeled(robotState.getGlobalLinkTransform(paramVisualLink), "start_pose");
-        visualTools.publishText(text_pose, "Goal Pose", rvt::WHITE, rvt::XLARGE);
         visualTools.publishAxisLabeled(robotStartState->getGlobalLinkTransform(paramVisualLink), "target_pose");
         visualTools.publishTrajectoryLine(planSolution04.trajectory, jointModelGroupPtr);
+        visualTools.trigger();
+
+        // uncomment if you want to execute the plan
+        //planningComponents->execute();
+    }
+
+    // start the next plan
+    visualTools.deleteAllMarkers();
+    visualTools.prompt("Press 'next' to continue with plan 05");
+
+    /// plan 05
+    //
+    // restore the start state
+    planningComponents->setStartState(*robotStartState);
+    // first plan a clear goal
+    geometry_msgs::PoseStamped goal05;
+    goal05.header.frame_id = paramGoalFrame;
+    if (dof > 6)
+    {
+        // DOF 7
+        goal05.pose.orientation.w = 1.0;
+    }
+    else
+    {
+        // DOF 6
+        goal05.pose.orientation = robotStartPose.orientation;
+    }
+    goal05.pose.position.x = paramGoal05[0];
+    goal05.pose.position.y = paramGoal05[1];
+    goal05.pose.position.z = paramGoal05[2];
+    planningComponents->setGoal(goal05, paramGoalLink);
+
+    // call the PlanningComponents to compute the plan and visualize it
+    // note that it is just planning
+    auto planSolution05 = planningComponents->plan();
+    // check if PlanningComponents succeeded in finding the plan
+    if (planSolution05)
+    {
+        visualTools.publishText(text_pose, "clear goal", rvt::WHITE, rvt::XLARGE);
+        // visualize the start pose in rviz
+        visualTools.publishAxisLabeled(robotStartState->getGlobalLinkTransform(paramVisualLink), "start_pose");
+        // visualize the goal pose in rviz
+        visualTools.publishAxisLabeled(goal05.pose, "target_pose");
+        // visualize the trajectory in rviz
+        visualTools.publishTrajectoryLine(planSolution05.trajectory, jointModelGroupPtr);
+        visualTools.trigger();
+
+        // uncomment if you want to execute the plan
+        //planningComponents->execute();
+    }
+
+    // start the next plan
+    visualTools.deleteAllMarkers();
+    visualTools.prompt("Press 'next' to continue with next step of plan 05");
+
+    // define a box to add to the world
+    shape_msgs::SolidPrimitive boxPrimitive;
+    boxPrimitive.type = boxPrimitive.BOX;
+    boxPrimitive.dimensions.resize(3);
+    boxPrimitive.dimensions[boxPrimitive.BOX_X] = paramBoxSize[0];
+    boxPrimitive.dimensions[boxPrimitive.BOX_Y] = paramBoxSize[1];
+    boxPrimitive.dimensions[boxPrimitive.BOX_Z] = paramBoxSize[2];
+
+    // define a pose for the box (specified relative to frame_id)
+    geometry_msgs::Pose boxPose;
+    boxPose.orientation.w = 1.0;
+    boxPose.position.x = paramBoxPose[0];
+    boxPose.position.y = paramBoxPose[1];
+    boxPose.position.z = paramBoxPose[2];
+
+    // define a collision object ROS message for the robot to avoid
+    moveit_msgs::CollisionObject collisionObject;
+    // frame_id decides the coord frame the object belongs to
+    collisionObject.header.frame_id = robotModelPtr->getRootLinkName();
+    // the id of the object is used to identify it
+    collisionObject.id = "collision box";
+    collisionObject.primitives.push_back(boxPrimitive);
+    collisionObject.primitive_poses.push_back(boxPose);
+    collisionObject.operation = collisionObject.ADD;
+    {
+        // lock PlanningScene
+        planning_scene_monitor::LockedPlanningSceneRW planningScene(moveitCppPtr->getPlanningSceneMonitor());
+        planningScene->processCollisionObjectMsg(collisionObject);
+        // unlock PlanningScene
+    }
+
+    // re-call the PlanningComponents to compute the plan and visualize it
+    // note that it is just planning
+    planSolution05 = planningComponents->plan();
+    // check if PlanningComponents succeeded in finding the plan
+    if (planSolution05)
+    {
+        visualTools.publishText(text_pose, "obstacle goal", rvt::WHITE, rvt::XLARGE);
+        // visualize the start pose in rviz
+        visualTools.publishAxisLabeled(robotStartState->getGlobalLinkTransform(paramVisualLink), "start_pose");
+        // visualize the goal pose in rviz
+        visualTools.publishAxisLabeled(goal05.pose, "target_pose");
+        // visualize the trajectory in rviz
+        visualTools.publishTrajectoryLine(planSolution05.trajectory, jointModelGroupPtr);
         visualTools.trigger();
 
         // uncomment if you want to execute the plan
