@@ -265,7 +265,9 @@ int main(int argc, char** argv)
 
         visualTools.publishText(text_pose, "goal from state group", rvt::WHITE, rvt::XLARGE);
         visualTools.publishAxisLabeled(robotState.getGlobalLinkTransform(paramVisualLink), "start_pose");
-        visualTools.publishAxisLabeled(robotStartState->getGlobalLinkTransform(paramVisualLink), "target_pose");
+        //visualTools.publishAxisLabeled(robotStartState->getGlobalLinkTransform(paramVisualLink), "target_pose");
+        moveit::core::RobotState robotTrajLastState = planSolution04.trajectory->getLastWayPoint();
+        visualTools.publishAxisLabeled(robotTrajLastState.getGlobalLinkTransform(paramVisualLink), "target_pose");
         visualTools.publishTrajectoryLine(planSolution04.trajectory, jointModelGroupPtr);
         visualTools.trigger();
 
