@@ -473,6 +473,13 @@ int main(int argc, char** argv)
         planningScene->processCollisionObjectMsg(collisionObject);
         // unlock PlanningScene
     }
+    attachedObject.object.REMOVE;
+    {
+        // lock PlanningScene
+        planning_scene_monitor::LockedPlanningSceneRW planningScene(moveitCppPtr->getPlanningSceneMonitor());
+        planningScene->processAttachedCollisionObjectMsg(attachedObject);
+        // unlock PlanningScene
+    }
 
     ros::shutdown();
     return 0;
