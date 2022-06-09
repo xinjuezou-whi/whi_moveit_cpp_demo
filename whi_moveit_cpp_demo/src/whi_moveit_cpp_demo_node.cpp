@@ -41,9 +41,9 @@ int main(int argc, char** argv)
     std::string paramPlanningGroup;
     nodeHandle.param("/moveit_cpp_demo/planning_group", paramPlanningGroup, std::string("whi_arm"));
     std::string paramVisualFrame;
-    nodeHandle.param("/moveit_cpp_demo/visual_frame", paramVisualFrame, std::string("whi_link7"));
+    nodeHandle.param("/moveit_cpp_demo/visual_frame", paramVisualFrame, std::string("whi_link0"));
     std::string paramVisualLink;
-    nodeHandle.param("/moveit_cpp_demo/visual_link", paramVisualLink, std::string("whi_link0"));
+    nodeHandle.param("/moveit_cpp_demo/visual_link", paramVisualLink, std::string("whi_link7"));
     double paramTitleHeight = 0.0;
     nodeHandle.param("/moveit_cpp_demo/title_height", paramTitleHeight, 0.7);
     // plan01
@@ -69,6 +69,14 @@ int main(int argc, char** argv)
     nodeHandle.getParam("/moveit_cpp_demo/plan05/block_box_size", paramBoxSize);
     std::vector<double> paramBoxPose;
     nodeHandle.getParam("/moveit_cpp_demo/plan05/block_box_pose", paramBoxPose);
+    double paramCylinderRadius = 0.0;
+    nodeHandle.param("/moveit_cpp_demo/plan05/grab_cylinder_radius", paramCylinderRadius, 0.02);
+    double paramCylinderHeight = 0.0;
+    nodeHandle.param("/moveit_cpp_demo/plan05/grab_cylinder_height", paramCylinderHeight, 0.1);
+    std::vector<std::string> paramCylinderPoseIndex;
+    nodeHandle.getParam("/moveit_cpp_demo/plan05/grap_cylinder_pose_index", paramCylinderPoseIndex);
+    std::vector<double> paramCylinderPose;
+    nodeHandle.getParam("/moveit_cpp_demo/plan05/grap_cylinder_pose", paramCylinderPose);
 
     /// setup
     //
@@ -178,25 +186,32 @@ int main(int argc, char** argv)
     startPose.position.y = paramStartPose02[1];
     startPose.position.z = paramStartPose02[2];
 
-    startState.setFromIK(jointModelGroupPtr, startPose);
-
-    planningComponents->setStartState(startState);
-
-    // reuse the previous goal that we had and plan to it
-    auto planSolution02 = planningComponents->plan();
-    if (planSolution02)
+    if (startState.setFromIK(jointModelGroupPtr, startPose))
     {
-        moveit::core::RobotState robotState(robotModelPtr);
-        moveit::core::robotStateMsgToRobotState(planSolution02.start_state, robotState);
+        planningComponents->setStartState(startState);
 
-        visualTools.publishText(text_pose, "single goal with pre-set start state", rvt::WHITE, rvt::XLARGE);
-        visualTools.publishAxisLabeled(robotState.getGlobalLinkTransform(paramVisualLink), "start_pose");
+        // reuse the previous goal that we had and plan to it
+        auto planSolution02 = planningComponents->plan();
+        if (planSolution02)
+        {
+            moveit::core::RobotState robotState(robotModelPtr);
+            moveit::core::robotStateMsgToRobotState(planSolution02.start_state, robotState);
+
+            visualTools.publishText(text_pose, "single goal with pre-set start state", rvt::WHITE, rvt::XLARGE);
+            visualTools.publishAxisLabeled(robotState.getGlobalLinkTransform(paramVisualLink), "start_pose");
+            visualTools.publishAxisLabeled(goal01.pose, "target_pose");
+            visualTools.publishTrajectoryLine(planSolution02.trajectory, jointModelGroupPtr);
+            visualTools.trigger();
+
+            // uncomment if you want to execute the plan
+            //planningComponents->execute();
+        }
+    }
+    else
+    {
+        visualTools.publishText(text_pose, "failed to get the IK from pre-set start state", rvt::WHITE, rvt::XLARGE);
         visualTools.publishAxisLabeled(goal01.pose, "target_pose");
-        visualTools.publishTrajectoryLine(planSolution02.trajectory, jointModelGroupPtr);
         visualTools.trigger();
-
-        // uncomment if you want to execute the plan
-        //planningComponents->execute();
     }
 
     // start the next plan
@@ -227,16 +242,16 @@ int main(int argc, char** argv)
     planningComponents->setGoal(targetState);
 
     // reuse the previous start state that we had and plan from it
-    auto planSolution3 = planningComponents->plan();
-    if (planSolution3)
+    auto planSolution03 = planningComponents->plan();
+    if (planSolution03)
     {
         moveit::core::RobotState robotState(robotModelPtr);
-        moveit::core::robotStateMsgToRobotState(planSolution3.start_state, robotState);
+        moveit::core::robotStateMsgToRobotState(planSolution03.start_state, robotState);
 
         visualTools.publishText(text_pose, "single goal set by target state", rvt::WHITE, rvt::XLARGE);
         visualTools.publishAxisLabeled(robotState.getGlobalLinkTransform(paramVisualLink), "start_pose");
         visualTools.publishAxisLabeled(goal03, "target_pose");
-        visualTools.publishTrajectoryLine(planSolution3.trajectory, jointModelGroupPtr);
+        visualTools.publishTrajectoryLine(planSolution03.trajectory, jointModelGroupPtr);
         visualTools.trigger();
 
         // uncomment if you want to execute the plan
@@ -265,7 +280,6 @@ int main(int argc, char** argv)
 
         visualTools.publishText(text_pose, "goal from state group", rvt::WHITE, rvt::XLARGE);
         visualTools.publishAxisLabeled(robotState.getGlobalLinkTransform(paramVisualLink), "start_pose");
-        //visualTools.publishAxisLabeled(robotStartState->getGlobalLinkTransform(paramVisualLink), "target_pose");
         moveit::core::RobotState robotTrajLastState = planSolution04.trajectory->getLastWayPoint();
         visualTools.publishAxisLabeled(robotTrajLastState.getGlobalLinkTransform(paramVisualLink), "target_pose");
         visualTools.publishTrajectoryLine(planSolution04.trajectory, jointModelGroupPtr);
@@ -324,21 +338,19 @@ int main(int argc, char** argv)
     visualTools.deleteAllMarkers();
     visualTools.prompt("Press 'next' to continue with next step of plan 05");
 
-    // define a box to add to the world
+    // define a collision box to add to the world
     shape_msgs::SolidPrimitive boxPrimitive;
     boxPrimitive.type = boxPrimitive.BOX;
     boxPrimitive.dimensions.resize(3);
     boxPrimitive.dimensions[boxPrimitive.BOX_X] = paramBoxSize[0];
     boxPrimitive.dimensions[boxPrimitive.BOX_Y] = paramBoxSize[1];
     boxPrimitive.dimensions[boxPrimitive.BOX_Z] = paramBoxSize[2];
-
     // define a pose for the box (specified relative to frame_id)
     geometry_msgs::Pose boxPose;
     boxPose.orientation.w = 1.0;
     boxPose.position.x = paramBoxPose[0];
     boxPose.position.y = paramBoxPose[1];
     boxPose.position.z = paramBoxPose[2];
-
     // define a collision object ROS message for the robot to avoid
     moveit_msgs::CollisionObject collisionObject;
     // frame_id decides the coord frame the object belongs to
@@ -374,8 +386,93 @@ int main(int argc, char** argv)
         //planningComponents->execute();
     }
 
+    // start the next plan
+    visualTools.deleteAllMarkers();
+    visualTools.prompt("Press 'next' to continue with next step of plan 05");
+
+    // define a cylinder to attach to the arm
+    shape_msgs::SolidPrimitive cylinderPrimitive;
+    cylinderPrimitive.type = cylinderPrimitive.CYLINDER;
+    cylinderPrimitive.dimensions.resize(2);
+    cylinderPrimitive.dimensions[cylinderPrimitive.CYLINDER_HEIGHT] = paramCylinderHeight;
+    cylinderPrimitive.dimensions[cylinderPrimitive.CYLINDER_RADIUS] = paramCylinderRadius;
+    // define a pose for the cylinder (specified relative to frame_id)
+    geometry_msgs::Pose grabPose;
+    if (dof > 6)
+    {
+        // DOF 7
+        grabPose.orientation.w = 1.0;
+    }
+    else
+    {
+        // DOF 6
+        grabPose.orientation = robotStartPose.orientation;
+    }
+    for (std::size_t i = 0; i < paramCylinderPoseIndex.size(); ++i)
+    {
+        if (paramCylinderPoseIndex[i] == "x")
+        {
+            grabPose.position.x = paramCylinderPose[i];
+        }
+        else if (paramCylinderPoseIndex[i] == "y")
+        {
+            grabPose.position.y = paramCylinderPose[i];
+        }
+        else
+        {
+            grabPose.position.z = paramCylinderPose[i];
+        }
+    }
+    // define a collision object ROS message for the robot to avoid
+    moveit_msgs::CollisionObject object2Attach;
+    // frame_id decides the coord frame the object belongs to
+    object2Attach.header.frame_id = jointModelGroupPtr->getLinkModelNames().back();
+    // the id of the object is used to identify it
+    object2Attach.id = "object cylinder";
+    object2Attach.primitives.push_back(cylinderPrimitive);
+    object2Attach.primitive_poses.push_back(grabPose);
+    object2Attach.operation = object2Attach.ADD;
+    moveit_msgs::AttachedCollisionObject attachedObject;
+    attachedObject.object = object2Attach;
+    attachedObject.link_name = jointModelGroupPtr->getLinkModelNames().back();
+    {
+        // lock PlanningScene
+        planning_scene_monitor::LockedPlanningSceneRW planningScene(moveitCppPtr->getPlanningSceneMonitor());
+        planningScene->processAttachedCollisionObjectMsg(attachedObject);
+        // unlock PlanningScene
+    }
+
+    // re-call the PlanningComponents to compute the plan and visualize it
+    // note that it is just planning
+    planSolution05 = planningComponents->plan();
+    // check if PlanningComponents succeeded in finding the plan
+    if (planSolution05)
+    {
+        visualTools.publishText(text_pose, "obstacle goal with attached object", rvt::WHITE, rvt::XLARGE);
+        // visualize the start pose in rviz
+        visualTools.publishAxisLabeled(robotStartState->getGlobalLinkTransform(paramVisualLink), "start_pose");
+        // visualize the goal pose in rviz
+        visualTools.publishAxisLabeled(goal05.pose, "target_pose");
+        // visualize the trajectory in rviz
+        visualTools.publishTrajectoryLine(planSolution05.trajectory, jointModelGroupPtr);
+        visualTools.trigger();
+
+        // uncomment if you want to execute the plan
+        //planningComponents->execute();
+    }
+
     visualTools.deleteAllMarkers();
     visualTools.prompt("Press 'next' to exit the demo");
+
+    // it is removed from scene indeed, but still visible in rviz
+    // it would disappear if another planning follows
+    collisionObject.operation = collisionObject.REMOVE;
+    {
+        // lock PlanningScene
+        planning_scene_monitor::LockedPlanningSceneRW planningScene(moveitCppPtr->getPlanningSceneMonitor());
+        planningScene->processCollisionObjectMsg(collisionObject);
+        // unlock PlanningScene
+    }
 
     ros::shutdown();
     return 0;
