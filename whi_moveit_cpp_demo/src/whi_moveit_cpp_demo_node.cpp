@@ -22,11 +22,12 @@ Changelog:
 #include <geometry_msgs/Pose.h>
 #include <Eigen/src/Geometry/Transform.h>
 #include <eigen_conversions/eigen_msg.h>
+#include <thread>
 
 int main(int argc, char** argv)
 {
     /// node version and copyright announcement
-    std::cout << "\nWHI MoveIt MoveItCpp demo VERSION 00.02" << std::endl;
+    std::cout << "\nWHI MoveIt MoveItCpp demo VERSION 00.03" << std::endl;
     std::cout << "Copyright © 2022-2023 Wheel Hub Intelligent Co.,Ltd. All rights reserved\n" << std::endl;
 
     ros::init(argc, argv, "moveit_cpp_demo");
@@ -54,6 +55,8 @@ int main(int argc, char** argv)
     std::string paramGoalLink;
     nodeHandle.param("/moveit_cpp_demo/plan01/goal_link", paramGoalLink, std::string("whi_link7"));
     // plan02
+    double paramIkTimeout02 = 0.0;
+    nodeHandle.param("/moveit_cpp_demo/plan02/ik_timeout", paramIkTimeout02, 0.5);
     std::vector<double> paramStartPose02;
     nodeHandle.getParam("/moveit_cpp_demo/plan02/start_pose", paramStartPose02);
     // plan03
@@ -63,20 +66,41 @@ int main(int argc, char** argv)
     std::string paramStateGroup;
     nodeHandle.param("/moveit_cpp_demo/plan04/state_group", paramStateGroup, std::string("ready"));
     // plan05
-    std::vector<double> paramGoal05;
-    nodeHandle.getParam("/moveit_cpp_demo/plan05/goal_pose", paramGoal05);
+    double paramIkTimeout05 = 0.0;
+    nodeHandle.param("/moveit_cpp_demo/plan05/ik_timeout", paramIkTimeout05, 0.5);
+    std::vector<double> paramStartPose05;
+    nodeHandle.getParam("/moveit_cpp_demo/plan05/start_pose", paramStartPose05);
+    std::vector<std::string> paramPoseIndex01;
+    nodeHandle.getParam("/moveit_cpp_demo/plan05/pose_index_01", paramPoseIndex01);
+    std::vector<double> paramPoseDelta01;
+    nodeHandle.getParam("/moveit_cpp_demo/plan05/pose_delta_01", paramPoseDelta01);
+    std::vector<std::string> paramPoseIndex02;
+    nodeHandle.getParam("/moveit_cpp_demo/plan05/pose_index_02", paramPoseIndex02);
+    std::vector<double> paramPoseDelta02;
+    nodeHandle.getParam("/moveit_cpp_demo/plan05/pose_delta_02", paramPoseDelta02);
+    std::vector<std::string> paramPoseIndex03;
+    nodeHandle.getParam("/moveit_cpp_demo/plan05/pose_index_03", paramPoseIndex03);
+    std::vector<double> paramPoseDelta03;
+    nodeHandle.getParam("/moveit_cpp_demo/plan05/pose_delta_03", paramPoseDelta03);
+    double paramJumpThreshold = 0.0;
+    nodeHandle.param("/moveit_cpp_demo/plan05/jump_threshold", paramJumpThreshold, 0.0);
+    double paramEndEffectorStep = 0.0;
+    nodeHandle.param("/moveit_cpp_demo/plan05/end_effector_step", paramEndEffectorStep, 0.01);
+    // plan06
+    std::vector<double> paramGoal06;
+    nodeHandle.getParam("/moveit_cpp_demo/plan06/goal_pose", paramGoal06);
     std::vector<double> paramBoxSize;
-    nodeHandle.getParam("/moveit_cpp_demo/plan05/block_box_size", paramBoxSize);
+    nodeHandle.getParam("/moveit_cpp_demo/plan06/block_box_size", paramBoxSize);
     std::vector<double> paramBoxPose;
-    nodeHandle.getParam("/moveit_cpp_demo/plan05/block_box_pose", paramBoxPose);
+    nodeHandle.getParam("/moveit_cpp_demo/plan06/block_box_pose", paramBoxPose);
     double paramCylinderRadius = 0.0;
-    nodeHandle.param("/moveit_cpp_demo/plan05/grab_cylinder_radius", paramCylinderRadius, 0.02);
+    nodeHandle.param("/moveit_cpp_demo/plan06/grab_cylinder_radius", paramCylinderRadius, 0.02);
     double paramCylinderHeight = 0.0;
-    nodeHandle.param("/moveit_cpp_demo/plan05/grab_cylinder_height", paramCylinderHeight, 0.1);
+    nodeHandle.param("/moveit_cpp_demo/plan06/grab_cylinder_height", paramCylinderHeight, 0.1);
     std::vector<std::string> paramCylinderPoseIndex;
-    nodeHandle.getParam("/moveit_cpp_demo/plan05/grap_cylinder_pose_index", paramCylinderPoseIndex);
+    nodeHandle.getParam("/moveit_cpp_demo/plan06/grap_cylinder_pose_index", paramCylinderPoseIndex);
     std::vector<double> paramCylinderPose;
-    nodeHandle.getParam("/moveit_cpp_demo/plan05/grap_cylinder_pose", paramCylinderPose);
+    nodeHandle.getParam("/moveit_cpp_demo/plan06/grap_cylinder_pose", paramCylinderPose);
 
     /// setup
     //
@@ -106,9 +130,9 @@ int main(int argc, char** argv)
     visualTools.deleteAllMarkers();
     visualTools.loadRemoteControl();
 
-    Eigen::Isometry3d text_pose = Eigen::Isometry3d::Identity();
-    text_pose.translation().z() = paramTitleHeight;
-    visualTools.publishText(text_pose, "MoveItCpp Demo", rvt::WHITE, rvt::XLARGE);
+    Eigen::Isometry3d textPose = Eigen::Isometry3d::Identity();
+    textPose.translation().z() = paramTitleHeight;
+    visualTools.publishText(textPose, "MoveItCpp Demo", rvt::WHITE, rvt::XLARGE);
     visualTools.trigger();
 
     /// start the demo
@@ -149,7 +173,7 @@ int main(int argc, char** argv)
     // check if PlanningComponents succeeded in finding the plan
     if (planSolution01)
     {
-        visualTools.publishText(text_pose, "single goal", rvt::WHITE, rvt::XLARGE);
+        visualTools.publishText(textPose, "single goal", rvt::WHITE, rvt::XLARGE);
         // visualize the start pose in rviz
         visualTools.publishAxisLabeled(robotStartState->getGlobalLinkTransform(paramVisualLink), "start_pose");
         // visualize the goal pose in rviz
@@ -169,26 +193,26 @@ int main(int argc, char** argv)
     /// plan 02
     //
     // the current state of the plan can be set by using moveit::core::RobotState
-    auto startState = *(moveitCppPtr->getCurrentState());
-    geometry_msgs::Pose startPose;
-    startPose.orientation.w = 1.0;
+    auto startState02 = *(moveitCppPtr->getCurrentState());
+    geometry_msgs::Pose startPose02;
+    startPose02.orientation.w = 1.0;
     if (dof > 6)
     {
         // DOF 7
-        startPose.orientation.w = 1.0;
+        startPose02.orientation.w = 1.0;
     }
     else
     {
         // DOF 6
-        startPose.orientation = robotStartPose.orientation;
+        startPose02.orientation = robotStartPose.orientation;
     }
-    startPose.position.x = paramStartPose02[0];
-    startPose.position.y = paramStartPose02[1];
-    startPose.position.z = paramStartPose02[2];
+    startPose02.position.x = paramStartPose02[0];
+    startPose02.position.y = paramStartPose02[1];
+    startPose02.position.z = paramStartPose02[2];
 
-    if (startState.setFromIK(jointModelGroupPtr, startPose))
+    if (startState02.setFromIK(jointModelGroupPtr, startPose02, paramIkTimeout02))
     {
-        planningComponents->setStartState(startState);
+        planningComponents->setStartState(startState02);
 
         // reuse the previous goal that we had and plan to it
         auto planSolution02 = planningComponents->plan();
@@ -197,7 +221,7 @@ int main(int argc, char** argv)
             moveit::core::RobotState robotState(robotModelPtr);
             moveit::core::robotStateMsgToRobotState(planSolution02.start_state, robotState);
 
-            visualTools.publishText(text_pose, "single goal with pre-set start state", rvt::WHITE, rvt::XLARGE);
+            visualTools.publishText(textPose, "single goal with pre-set start state", rvt::WHITE, rvt::XLARGE);
             visualTools.publishAxisLabeled(robotState.getGlobalLinkTransform(paramVisualLink), "start_pose");
             visualTools.publishAxisLabeled(goal01.pose, "target_pose");
             visualTools.publishTrajectoryLine(planSolution02.trajectory, jointModelGroupPtr);
@@ -209,7 +233,7 @@ int main(int argc, char** argv)
     }
     else
     {
-        visualTools.publishText(text_pose, "failed to get the IK from pre-set start state", rvt::WHITE, rvt::XLARGE);
+        visualTools.publishText(textPose, "failed to get the IK from pre-set start state", rvt::WHITE, rvt::XLARGE);
         visualTools.publishAxisLabeled(goal01.pose, "target_pose");
         visualTools.trigger();
     }
@@ -248,7 +272,7 @@ int main(int argc, char** argv)
         moveit::core::RobotState robotState(robotModelPtr);
         moveit::core::robotStateMsgToRobotState(planSolution03.start_state, robotState);
 
-        visualTools.publishText(text_pose, "single goal set by target state", rvt::WHITE, rvt::XLARGE);
+        visualTools.publishText(textPose, "single goal set by target state", rvt::WHITE, rvt::XLARGE);
         visualTools.publishAxisLabeled(robotState.getGlobalLinkTransform(paramVisualLink), "start_pose");
         visualTools.publishAxisLabeled(goal03, "target_pose");
         visualTools.publishTrajectoryLine(planSolution03.trajectory, jointModelGroupPtr);
@@ -278,7 +302,7 @@ int main(int argc, char** argv)
         moveit::core::RobotState robotState(robotModelPtr);
         moveit::core::robotStateMsgToRobotState(planSolution04.start_state, robotState);
 
-        visualTools.publishText(text_pose, "goal from state group", rvt::WHITE, rvt::XLARGE);
+        visualTools.publishText(textPose, "goal from state group", rvt::WHITE, rvt::XLARGE);
         visualTools.publishAxisLabeled(robotState.getGlobalLinkTransform(paramVisualLink), "start_pose");
         moveit::core::RobotState robotTrajLastState = planSolution04.trajectory->getLastWayPoint();
         visualTools.publishAxisLabeled(robotTrajLastState.getGlobalLinkTransform(paramVisualLink), "target_pose");
@@ -293,41 +317,160 @@ int main(int argc, char** argv)
     visualTools.deleteAllMarkers();
     visualTools.prompt("Press 'next' to continue with plan 05");
 
-    /// plan 05
-    //
+    // plan05
+    // 
     // restore the start state
     planningComponents->setStartState(*robotStartState);
-    // first plan a clear goal
-    geometry_msgs::PoseStamped goal05;
-    goal05.header.frame_id = paramGoalFrame;
+    // set the state to the one which satisfies the constraints of Cartesian
+    auto startState05 = *(moveitCppPtr->getCurrentState());
+    geometry_msgs::Pose startPose05;
     if (dof > 6)
     {
         // DOF 7
-        goal05.pose.orientation.w = 1.0;
+        startPose05.orientation.w = 1.0;
     }
     else
     {
         // DOF 6
-        goal05.pose.orientation = robotStartPose.orientation;
+        startPose05.orientation = robotStartPose.orientation;
     }
-    goal05.pose.position.x = paramGoal05[0];
-    goal05.pose.position.y = paramGoal05[1];
-    goal05.pose.position.z = paramGoal05[2];
-    planningComponents->setGoal(goal05, paramGoalLink);
+    startPose05.position.x = paramStartPose05[0];
+    startPose05.position.y = paramStartPose05[1];
+    startPose05.position.z = paramStartPose05[2];
+    if (startState05.setFromIK(jointModelGroupPtr, startPose05, paramIkTimeout05))
+    {
+        planningComponents->setStartState(startState05);
+
+        // organize waypoints
+        EigenSTL::vector_Isometry3d waypoints;
+        Eigen::Isometry3d eigenPose;
+        tf::poseMsgToEigen(startPose05, eigenPose);
+        waypoints.push_back(eigenPose);
+
+        geometry_msgs::Pose wayPose = startPose05;
+        // up and back
+        for (std::size_t i = 0; i < paramPoseIndex01.size(); ++i)
+        {
+            if (paramPoseIndex01[i] == "x")
+            {
+                wayPose.position.x += paramPoseDelta01[i];
+            }
+            else if (paramPoseIndex01[i] == "y")
+            {
+                wayPose.position.y += paramPoseDelta01[i];
+            }
+            else
+            {
+                wayPose.position.z += paramPoseDelta01[i];
+            }
+        }
+        tf::poseMsgToEigen(wayPose, eigenPose);
+        waypoints.push_back(eigenPose);
+        // left
+        for (std::size_t i = 0; i < paramPoseIndex02.size(); ++i)
+        {
+            if (paramPoseIndex02[i] == "x")
+            {
+                wayPose.position.x += paramPoseDelta02[i];
+            }
+            else if (paramPoseIndex02[i] == "y")
+            {
+                wayPose.position.y += paramPoseDelta02[i];
+            }
+            else
+            {
+                wayPose.position.z += paramPoseDelta02[i];
+            }
+        }
+        tf::poseMsgToEigen(wayPose, eigenPose);
+        waypoints.push_back(eigenPose);
+        // down and right
+        for (std::size_t i = 0; i < paramPoseIndex03.size(); ++i)
+        {
+            if (paramPoseIndex03[i] == "x")
+            {
+                wayPose.position.x += paramPoseDelta03[i];
+            }
+            else if (paramPoseIndex03[i] == "y")
+            {
+                wayPose.position.y += paramPoseDelta03[i];
+            }
+            else
+            {
+                wayPose.position.z += paramPoseDelta03[i];
+            }
+        }
+        tf::poseMsgToEigen(wayPose, eigenPose);
+        waypoints.push_back(eigenPose);
+
+        std::vector<moveit::core::RobotStatePtr> resTraj;
+        double fraction = startState05.computeCartesianPath(jointModelGroupPtr, resTraj, jointModelGroupPtr->getLinkModel(paramVisualLink), waypoints,
+            true, paramEndEffectorStep, paramJumpThreshold);
+        ROS_INFO_NAMED("demo", "visualizing plan 05 (Cartesian path) (%.2f%% achieved)", fraction * 100.0);
+
+        visualTools.publishText(textPose, "Cartesian path", rvt::WHITE, rvt::XLARGE);
+        for (std::size_t i = 0; i < waypoints.size(); ++i)
+        {
+            visualTools.publishAxisLabeled(waypoints[i], "pt" + std::to_string(i), rvt::SMALL);
+        }
+        visualTools.trigger();
+
+        for (auto it : resTraj)
+        {
+            planningComponents->setGoal(*it);
+            auto planSolution05 = planningComponents->plan();
+            // set the previous state to current
+            planningComponents->setStartState(*it);
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        }
+    }
+    else
+    {
+        visualTools.publishText(textPose, "failed to get the IK from pre-set start state", rvt::WHITE, rvt::XLARGE);
+        visualTools.publishAxisLabeled(startPose05, "target_pose");
+        visualTools.trigger();
+    }
+    
+    // start the next plan
+    visualTools.deleteAllMarkers();
+    visualTools.prompt("Press 'next' to continue with plan 06");
+
+    /// plan 06
+    //
+    // restore the start state
+    planningComponents->setStartState(*robotStartState);
+    // first plan a clear goal
+    geometry_msgs::PoseStamped goal06;
+    goal06.header.frame_id = paramGoalFrame;
+    if (dof > 6)
+    {
+        // DOF 7
+        goal06.pose.orientation.w = 1.0;
+    }
+    else
+    {
+        // DOF 6
+        goal06.pose.orientation = robotStartPose.orientation;
+    }
+    goal06.pose.position.x = paramGoal06[0];
+    goal06.pose.position.y = paramGoal06[1];
+    goal06.pose.position.z = paramGoal06[2];
+    planningComponents->setGoal(goal06, paramGoalLink);
 
     // call the PlanningComponents to compute the plan and visualize it
     // note that it is just planning
-    auto planSolution05 = planningComponents->plan();
+    auto planSolution06 = planningComponents->plan();
     // check if PlanningComponents succeeded in finding the plan
-    if (planSolution05)
+    if (planSolution06)
     {
-        visualTools.publishText(text_pose, "clear goal", rvt::WHITE, rvt::XLARGE);
+        visualTools.publishText(textPose, "clear goal", rvt::WHITE, rvt::XLARGE);
         // visualize the start pose in rviz
         visualTools.publishAxisLabeled(robotStartState->getGlobalLinkTransform(paramVisualLink), "start_pose");
         // visualize the goal pose in rviz
-        visualTools.publishAxisLabeled(goal05.pose, "target_pose");
+        visualTools.publishAxisLabeled(goal06.pose, "target_pose");
         // visualize the trajectory in rviz
-        visualTools.publishTrajectoryLine(planSolution05.trajectory, jointModelGroupPtr);
+        visualTools.publishTrajectoryLine(planSolution06.trajectory, jointModelGroupPtr);
         visualTools.trigger();
 
         // uncomment if you want to execute the plan
@@ -336,7 +479,7 @@ int main(int argc, char** argv)
 
     // start the next plan
     visualTools.deleteAllMarkers();
-    visualTools.prompt("Press 'next' to continue with next step of plan 05");
+    visualTools.prompt("Press 'next' to continue with next step of plan 06");
 
     // define a collision box to add to the world
     shape_msgs::SolidPrimitive boxPrimitive;
@@ -369,17 +512,17 @@ int main(int argc, char** argv)
 
     // re-call the PlanningComponents to compute the plan and visualize it
     // note that it is just planning
-    planSolution05 = planningComponents->plan();
+    planSolution06 = planningComponents->plan();
     // check if PlanningComponents succeeded in finding the plan
-    if (planSolution05)
+    if (planSolution06)
     {
-        visualTools.publishText(text_pose, "obstacle goal", rvt::WHITE, rvt::XLARGE);
+        visualTools.publishText(textPose, "obstacle goal", rvt::WHITE, rvt::XLARGE);
         // visualize the start pose in rviz
         visualTools.publishAxisLabeled(robotStartState->getGlobalLinkTransform(paramVisualLink), "start_pose");
         // visualize the goal pose in rviz
-        visualTools.publishAxisLabeled(goal05.pose, "target_pose");
+        visualTools.publishAxisLabeled(goal06.pose, "target_pose");
         // visualize the trajectory in rviz
-        visualTools.publishTrajectoryLine(planSolution05.trajectory, jointModelGroupPtr);
+        visualTools.publishTrajectoryLine(planSolution06.trajectory, jointModelGroupPtr);
         visualTools.trigger();
 
         // uncomment if you want to execute the plan
@@ -388,7 +531,7 @@ int main(int argc, char** argv)
 
     // start the next plan
     visualTools.deleteAllMarkers();
-    visualTools.prompt("Press 'next' to continue with next step of plan 05");
+    visualTools.prompt("Press 'next' to continue with next step of plan 06");
 
     // define a cylinder to attach to the arm
     shape_msgs::SolidPrimitive cylinderPrimitive;
@@ -444,17 +587,17 @@ int main(int argc, char** argv)
 
     // re-call the PlanningComponents to compute the plan and visualize it
     // note that it is just planning
-    planSolution05 = planningComponents->plan();
+    planSolution06 = planningComponents->plan();
     // check if PlanningComponents succeeded in finding the plan
-    if (planSolution05)
+    if (planSolution06)
     {
-        visualTools.publishText(text_pose, "obstacle goal with attached object", rvt::WHITE, rvt::XLARGE);
+        visualTools.publishText(textPose, "obstacle goal with attached object", rvt::WHITE, rvt::XLARGE);
         // visualize the start pose in rviz
         visualTools.publishAxisLabeled(robotStartState->getGlobalLinkTransform(paramVisualLink), "start_pose");
         // visualize the goal pose in rviz
-        visualTools.publishAxisLabeled(goal05.pose, "target_pose");
+        visualTools.publishAxisLabeled(goal06.pose, "target_pose");
         // visualize the trajectory in rviz
-        visualTools.publishTrajectoryLine(planSolution05.trajectory, jointModelGroupPtr);
+        visualTools.publishTrajectoryLine(planSolution06.trajectory, jointModelGroupPtr);
         visualTools.trigger();
 
         // uncomment if you want to execute the plan
