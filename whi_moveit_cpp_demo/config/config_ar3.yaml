@@ -1,0 +1,35 @@
+moveit_cpp_demo:
+  planning_group: 'manipulator'
+  visual_frame: 'base_link'
+  visual_link: 'link_6'
+  title_height: 0.7
+  plan01:
+    goal_pose: [0.18, -0.1, 0.3]
+    goal_frame: 'base_link'
+    goal_link: 'link_6'
+  plan02:
+    ik_timeout: 0.5
+    start_pose: [-0.1, 0.0, 0.2]
+  plan03:
+    goal_pose: [-0.1, -0.05, 0.3]
+  plan04:
+    state_group: 'ready'
+  plan05:
+    ik_timeout: 0.5
+    start_pose: [0.25, -0.05, 0.25]
+    pose_index_01: ['x', 'z']
+    pose_delta_01: [-0.1, 0.1]
+    pose_index_02: ['y']
+    pose_delta_02: [0.1]
+    pose_index_03: ['y', 'z']
+    pose_delta_03: [-0.1, -0.1]
+    jump_threshold: 0.0
+    end_effector_step: 0.01
+  plan06:
+    goal_pose: [0.24, 0.04, 0.26]
+    block_box_size: [0.05, 0.4, 0.1]
+    block_box_pose: [0.15, 0.0, 0.4]
+    grab_cylinder_radius: 0.02
+    grab_cylinder_height: 0.1
+    grap_cylinder_pose_index: ['x', 'z']
+    grap_cylinder_pose: [0.1, 0.02]

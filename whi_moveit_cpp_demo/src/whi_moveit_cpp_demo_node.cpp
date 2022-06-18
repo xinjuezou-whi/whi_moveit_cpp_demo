@@ -18,6 +18,8 @@ Changelog:
 #include <moveit/moveit_cpp/planning_component.h>
 #include <moveit/robot_state/conversions.h>
 #include <moveit_visual_tools/moveit_visual_tools.h>
+#include <moveit/trajectory_processing/iterative_time_parameterization.h>
+#include <moveit_msgs/DisplayTrajectory.h>
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/Pose.h>
 #include <Eigen/src/Geometry/Transform.h>
@@ -27,7 +29,7 @@ Changelog:
 int main(int argc, char** argv)
 {
     /// node version and copyright announcement
-    std::cout << "\nWHI MoveIt MoveItCpp demo VERSION 00.03" << std::endl;
+    std::cout << "\nWHI MoveIt MoveItCpp demo VERSION 00.04" << std::endl;
     std::cout << "Copyright © 2022-2023 Wheel Hub Intelligent Co.,Ltd. All rights reserved\n" << std::endl;
 
     ros::init(argc, argv, "moveit_cpp_demo");
@@ -407,23 +409,36 @@ int main(int argc, char** argv)
         double fraction = startState05.computeCartesianPath(jointModelGroupPtr, resTraj, jointModelGroupPtr->getLinkModel(paramVisualLink), waypoints,
             true, paramEndEffectorStep, paramJumpThreshold);
         ROS_INFO_NAMED("demo", "visualizing plan 05 (Cartesian path) (%.2f%% achieved)", fraction * 100.0);
+        
+        /// to visualize the Cartesian path
+        // get the robot_trajectory::RobotTrajectory from RobotStatePtr
+        robot_trajectory::RobotTrajectory traj(robotModelPtr, paramPlanningGroup);
+        for (const moveit::core::RobotStatePtr& trajState : resTraj)
+        {
+            traj.addSuffixWayPoint(trajState, 0.0);
+        }
+        // get the moveit_msgs::RobotTrajectory from robot_trajectory::RobotTrajectory
+        moveit_msgs::RobotTrajectory msgTraj;
+        traj.getRobotTrajectoryMsg(msgTraj);
+        if (traj.getWayPointCount() > 0)
+        {
+            moveit_msgs::DisplayTrajectory dispTraj;
+            dispTraj.model_id = robotModelPtr->getName();
+            dispTraj.trajectory.resize(1, msgTraj);
+            moveit::core::robotStateToRobotStateMsg(traj.getFirstWayPoint(), dispTraj.trajectory_start);
+            auto displayPathPub = nodeHandle.advertise<moveit_msgs::DisplayTrajectory>(
+                "/whi_moveit_cpp_demo/ompl/display_planned_path"/*planning_pipeline::PlanningPipeline::DISPLAY_PATH_TOPIC*/, 10, true);
+            displayPathPub.publish(dispTraj);
+        }
 
         visualTools.publishText(textPose, "Cartesian path", rvt::WHITE, rvt::XLARGE);
         for (std::size_t i = 0; i < waypoints.size(); ++i)
         {
             visualTools.publishAxisLabeled(waypoints[i], "pt" + std::to_string(i), rvt::SMALL);
         }
+        // still have no idea how to leverage visualTools to publish the Cartesian path???
+        //visualTools.publishTrajectoryPath(resTraj, jointModelGroupPtr);
         visualTools.trigger();
-
-        for (auto it : resTraj)
-        {
-            planningComponents->setGoal(*it);
-            auto planSolution05 = planningComponents->plan();
-            // set the previous state to current
-            planningComponents->setStartState(*it);
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(200));
-        }
     }
     else
     {

@@ -1,0 +1,35 @@
+moveit_cpp_demo:
+  planning_group: 'panda_arm'
+  visual_frame: 'panda_link0'
+  visual_link: 'panda_link8'
+  title_height: 1.0
+  plan01:
+    goal_pose: [0.28, -0.2, 0.5]
+    goal_frame: 'panda_link0'
+    goal_link: 'panda_link8'
+  plan02:
+    ik_timeout: 0.5
+    start_pose: [0.55, 0.0, 0.6]
+  plan03:
+    goal_pose: [0.55, -0.05, 0.8]
+  plan04:
+    state_group: 'ready'
+  plan05:
+    ik_timeout: 0.5
+    start_pose: [0.55, -0.05, 0.8]
+    pose_index_01: ['z']
+    pose_delta_01: [-0.2]
+    pose_index_02: ['y']
+    pose_delta_02: [-0.2]
+    pose_index_03: ['x', 'y', 'z']
+    pose_delta_03: [-0.2, 0.2, 0.2]
+    jump_threshold: 0.0
+    end_effector_step: 0.01
+  plan06:
+    goal_pose: [0.7, 0.0, 0.59]
+    block_box_size: [0.1, 1.5, 0.35]
+    block_box_pose: [0.5, 0.0, 0.25]
+    grab_cylinder_radius: 0.04
+    grab_cylinder_height: 0.2
+    grap_cylinder_pose_index: ['z']
+    grap_cylinder_pose: [0.22]
