@@ -633,17 +633,16 @@ int main(int argc, char** argv)
         }
     }
     // define a collision object ROS message for the robot to avoid
-    moveit_msgs::CollisionObject object2Attach;
-    // frame_id decides the coord frame the object belongs to
-    object2Attach.header.frame_id = jointModelGroupPtr->getLinkModelNames().back();
-    // the id of the object is used to identify it
-    object2Attach.id = "object cylinder";
-    object2Attach.primitives.push_back(cylinderPrimitive);
-    object2Attach.primitive_poses.push_back(grabPose);
-    object2Attach.operation = object2Attach.ADD;
     moveit_msgs::AttachedCollisionObject attachedObject;
-    attachedObject.object = object2Attach;
+    //attachedObject.object = object2Attach;
     attachedObject.link_name = jointModelGroupPtr->getLinkModelNames().back();
+    // the header must contain a valid TF frame
+    attachedObject.object.header.frame_id = jointModelGroupPtr->getLinkModelNames().back();
+    // the id of the object
+    attachedObject.object.id = "object cylinder";
+    attachedObject.object.primitives.push_back(cylinderPrimitive);
+    attachedObject.object.primitive_poses.push_back(grabPose);
+    attachedObject.object.operation = attachedObject.object.ADD;
     {
         // lock PlanningScene
         planning_scene_monitor::LockedPlanningSceneRW planningScene(moveitCppPtr->getPlanningSceneMonitor());
