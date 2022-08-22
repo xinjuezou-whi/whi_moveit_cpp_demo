@@ -570,6 +570,8 @@ int main(int argc, char** argv)
     collisionObject.primitive_poses.push_back(boxPose);
     collisionObject.operation = collisionObject.ADD;
     {
+        // to access the PlanningSceneMonitor's underlying PlanningScene,
+        // use the provided LockedPlanningSceneRW and LockedPlanningSceneRO classes
         // lock PlanningScene
         planning_scene_monitor::LockedPlanningSceneRW planningScene(moveitCppPtr->getPlanningSceneMonitor());
         planningScene->processCollisionObjectMsg(collisionObject);
