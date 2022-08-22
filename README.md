@@ -13,7 +13,17 @@ roslaunch whi_moveit_cpp_demo moveit_cpp_demo.launch arm:=panda
 ```
 
 ### whi arm
+Depends on package **whi_moveit_config**
+
 Open a shell, run the launch file:
 ```
 roslaunch whi_moveit_cpp_demo moveit_cpp_demo.launch
+```
+
+## AR2/3 arm
+Depends on package **ar3_core**
+
+Open a shell, run the launch file:
+```
+roslaunch whi_moveit_cpp_demo moveit_cpp_demo.launch arm:=ar3
 ```
