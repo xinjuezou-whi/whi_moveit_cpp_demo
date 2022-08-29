@@ -8,13 +8,18 @@ moveit_cpp_demo:
     goal_frame: 'panda_link0'
     goal_link: 'panda_link8'
   plan02:
+    joint_index: [0]
+    joint_goal: [-1.0471975]
+    velocity_scaling_factor: 0.05
+    acc_scaling_factor: 0.05
+  plan03:
     ik_timeout: 0.5
     start_pose: [0.55, 0.0, 0.6]
-  plan03:
-    goal_pose: [0.55, -0.05, 0.8]
   plan04:
-    state_group: 'ready'
+    goal_pose: [0.55, -0.05, 0.8]
   plan05:
+    state_group: 'ready'
+  plan06:
     ik_timeout: 0.5
     start_pose: [0.55, -0.05, 0.8]
     pose_index_01: ['z']
@@ -25,7 +30,7 @@ moveit_cpp_demo:
     pose_delta_03: [-0.2, 0.2, 0.2]
     jump_threshold: 0.0
     end_effector_step: 0.01
-  plan06:
+  plan07:
     goal_pose: [0.7, 0.0, 0.59]
     block_box_size: [0.1, 1.5, 0.35]
     block_box_pose: [0.5, 0.0, 0.25]
@@ -33,3 +38,4 @@ moveit_cpp_demo:
     grab_cylinder_height: 0.2
     grap_cylinder_pose_index: ['z']
     grap_cylinder_pose: [0.22]
+    
