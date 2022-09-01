@@ -8,13 +8,18 @@ moveit_cpp_demo:
     goal_frame: 'base_link'
     goal_link: 'link_6'
   plan02:
+    joint_index: [0, 1, 2, 4]
+    joint_goal: [-1.0471975, -1.0471975, -1.0471975, 1.0471975]
+    velocity_scaling_factor: 0.05
+    acc_scaling_factor: 0.05
+  plan03:
     ik_timeout: 0.5
     start_pose: [-0.1, 0.0, 0.2]
-  plan03:
-    goal_pose: [-0.1, -0.05, 0.3]
   plan04:
-    state_group: 'ready'
+    goal_pose: [-0.1, -0.05, 0.3]
   plan05:
+    state_group: 'ready'
+  plan06:
     ik_timeout: 0.5
     start_pose: [0.25, -0.05, 0.25]
     pose_index_01: ['x', 'z']
@@ -25,7 +30,7 @@ moveit_cpp_demo:
     pose_delta_03: [-0.1, -0.1]
     jump_threshold: 0.0
     end_effector_step: 0.01
-  plan06:
+  plan07:
     goal_pose: [0.24, 0.04, 0.26]
     block_box_size: [0.05, 0.4, 0.1]
     block_box_pose: [0.15, 0.0, 0.4]

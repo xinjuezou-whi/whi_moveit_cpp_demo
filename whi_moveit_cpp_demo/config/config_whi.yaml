@@ -38,4 +38,3 @@ moveit_cpp_demo:
     grab_cylinder_height: 0.1
     grap_cylinder_pose_index: ['x', 'z']
     grap_cylinder_pose: [0.1, 0.02]
-    
