@@ -29,7 +29,7 @@ Changelog:
 int main(int argc, char** argv)
 {
     /// node version and copyright announcement
-    std::cout << "\nWHI MoveIt MoveItCpp demo VERSION 00.05" << std::endl;
+    std::cout << "\nWHI MoveIt MoveItCpp demo VERSION 00.06" << std::endl;
     std::cout << "Copyright © 2022-2023 Wheel Hub Intelligent Co.,Ltd. All rights reserved\n" << std::endl;
 
     ros::init(argc, argv, "moveit_cpp_demo");
@@ -120,7 +120,7 @@ int main(int argc, char** argv)
 
     namespace moveit_cpp = moveit::planning_interface;
     auto moveitCppPtr = std::make_shared<moveit_cpp::MoveItCpp>(nodeHandle);
-    moveitCppPtr->getPlanningSceneMonitor()->providePlanningSceneService();
+    moveitCppPtr->getPlanningSceneMonitorNonConst()->providePlanningSceneService();
 
     auto planningComponents = std::make_shared<moveit_cpp::PlanningComponent>(paramPlanningGroup, moveitCppPtr);
     auto robotModelPtr = moveitCppPtr->getRobotModel();
@@ -137,7 +137,7 @@ int main(int argc, char** argv)
     // and trajectories in RViz as well as debugging tools such as step-by-step introspection of a script
     namespace rvt = rviz_visual_tools;
     moveit_visual_tools::MoveItVisualTools visualTools(paramVisualFrame, rvt::RVIZ_MARKER_TOPIC,
-        moveitCppPtr->getPlanningSceneMonitor());
+        moveitCppPtr->getPlanningSceneMonitorNonConst());
     visualTools.deleteAllMarkers();
     visualTools.loadRemoteControl();
 
@@ -573,7 +573,7 @@ int main(int argc, char** argv)
         // to access the PlanningSceneMonitor's underlying PlanningScene,
         // use the provided LockedPlanningSceneRW and LockedPlanningSceneRO classes
         // lock PlanningScene
-        planning_scene_monitor::LockedPlanningSceneRW planningScene(moveitCppPtr->getPlanningSceneMonitor());
+        planning_scene_monitor::LockedPlanningSceneRW planningScene(moveitCppPtr->getPlanningSceneMonitorNonConst());
         planningScene->processCollisionObjectMsg(collisionObject);
         // unlock PlanningScene
     }
@@ -647,7 +647,7 @@ int main(int argc, char** argv)
     attachedObject.object.operation = attachedObject.object.ADD;
     {
         // lock PlanningScene
-        planning_scene_monitor::LockedPlanningSceneRW planningScene(moveitCppPtr->getPlanningSceneMonitor());
+        planning_scene_monitor::LockedPlanningSceneRW planningScene(moveitCppPtr->getPlanningSceneMonitorNonConst());
         planningScene->processAttachedCollisionObjectMsg(attachedObject);
         // unlock PlanningScene
     }
@@ -679,14 +679,14 @@ int main(int argc, char** argv)
     collisionObject.operation = collisionObject.REMOVE;
     {
         // lock PlanningScene
-        planning_scene_monitor::LockedPlanningSceneRW planningScene(moveitCppPtr->getPlanningSceneMonitor());
+        planning_scene_monitor::LockedPlanningSceneRW planningScene(moveitCppPtr->getPlanningSceneMonitorNonConst());
         planningScene->processCollisionObjectMsg(collisionObject);
         // unlock PlanningScene
     }
     attachedObject.object.REMOVE;
     {
         // lock PlanningScene
-        planning_scene_monitor::LockedPlanningSceneRW planningScene(moveitCppPtr->getPlanningSceneMonitor());
+        planning_scene_monitor::LockedPlanningSceneRW planningScene(moveitCppPtr->getPlanningSceneMonitorNonConst());
         planningScene->processAttachedCollisionObjectMsg(attachedObject);
         // unlock PlanningScene
     }
